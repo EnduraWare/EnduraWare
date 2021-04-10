@@ -52,6 +52,15 @@ elseif(APPLE)
     set(Plat_BSD TRUE)
 endif()
 
+#
+# types
+#
+
+check_type_size("void *" Size_VoidStar)
+
+#
+# functions, variables, and macros
+#
 check_symbol_exists(program_invocation_short_name "errno.h" Have_program_invocation_short_name)
 
 add_subdirectory(lib)
