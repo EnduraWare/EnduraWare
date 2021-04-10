@@ -64,3 +64,4 @@ check_type_size("void *" Size_VoidStar)
 check_symbol_exists(program_invocation_short_name "errno.h" Have_program_invocation_short_name)
 
 add_subdirectory(lib)
+add_subdirectory(cmd)

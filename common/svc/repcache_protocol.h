@@ -365,9 +365,13 @@
  *	When it is set to 'perm', the switch is reversed.
  */
 
-#include <door.h>
 #include <stddef.h>
 #include <sys/sysmacros.h>
+#include <sys/param.h>
+
+#if 0
+#include <door.h>
+#endif
 
 #ifdef	__cplusplus
 extern "C" {

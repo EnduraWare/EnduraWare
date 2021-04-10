@@ -3,6 +3,7 @@ add_executable(lemon tool/lemon.c)
 set(File_sqlite_h_in ${CMAKE_CURRENT_SOURCE_DIR}/src/sqlite.h.in)
 set(File_sqlite_h ${CMAKE_CURRENT_BINARY_DIR}/sqlite.h)
 set(File_parse_h ${CMAKE_CURRENT_BINARY_DIR}/parse.h)
+set(File_parse_c ${CMAKE_CURRENT_BINARY_DIR}/parse.c)
 
 add_custom_command(
     OUTPUT ${File_sqlite_h}
@@ -13,14 +14,16 @@ add_custom_command(
 )
 
 add_custom_command(
-    OUTPUT ${File_parse_h} ${File}
+    OUTPUT ${File_parse_h} ${File_parse_c}
     COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/tool/lempar.c ./
-    COMMAND $<TARGET_FILE:lemon> ${CMAKE_CURRENT_SOURCE_DIR}/src/parse.y
+    COMMAND cp ${CMAKE_CURRENT_SOURCE_DIR}/src/parse.y ./
+    COMMAND $<TARGET_FILE:lemon> parse.y
 )
 
 add_custom_command(
-    OUTPUT opcodes.h
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tool/genopcodes.sh ${CMAKE_CURRENT_SOURCE_DIR}/src/vdbe.c
+    OUTPUT opcodes.h opcodes.c
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/tool/genopcodes.sh
+      ${CMAKE_CURRENT_SOURCE_DIR}/src/vdbe.c
 )
 
 add_library(nw-sqlite src/attach.c src/auth.c src/btree.c src/btree_rb.c
@@ -31,6 +34,9 @@ add_library(nw-sqlite src/attach.c src/auth.c src/btree.c src/btree_rb.c
     src/where.c src/tclsqlite.c
     ${File_sqlite_h}
     ${File_parse_h}
-    ${CMAKE_CURRENT_BINARY_DIR}/opcodes.h)
+    ${File_parse_c}
+    ${CMAKE_CURRENT_BINARY_DIR}/opcodes.h ${CMAKE_CURRENT_BINARY_DIR}/opcodes.c)
 
-target_include_directories(nw-sqlite PUBLIC ${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(nw-sqlite
+    PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
+    PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)

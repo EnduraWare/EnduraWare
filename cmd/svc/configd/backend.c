@@ -33,8 +33,7 @@
 #define	_LARGEFILE64_SOURCE
 
 #include <assert.h>
-#include <atomic.h>
-#include <door.h>
+
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -49,8 +48,13 @@
 #include <sys/statvfs.h>
 #include <time.h>
 #include <unistd.h>
-#include <zone.h>
 #include <libscf_priv.h>
+
+#if 0
+#include <atomic.h>
+#include <door.h>
+#include <zone.h>
+#endif
 
 #include "configd.h"
 #include "repcache_protocol.h"
@@ -474,9 +478,9 @@ static int
 backend_is_readonly(struct sqlite *db, const char *path)
 {
 	int r;
-	statvfs64_t stat;
+	struct statvfs stat;
 
-	if (statvfs64(path, &stat) == 0 && (stat.f_flag & ST_RDONLY))
+	if (statvfs(path, &stat) == 0 && (stat.f_flag & ST_RDONLY))
 		return (SQLITE_READONLY);
 
 	r = sqlite_exec(db,
@@ -571,7 +575,7 @@ backend_panic(const char *format, ...)
 	va_end(args);
 
 	for (i = 0; i < BACKEND_TYPE_TOTAL; i++) {
-		timespec_t rel;
+		struct timespec rel;
 
 		rel.tv_sec = 0;
 		rel.tv_nsec = BACKEND_PANIC_TIMEOUT;

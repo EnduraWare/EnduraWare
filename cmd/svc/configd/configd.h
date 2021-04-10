@@ -31,18 +31,23 @@
 #ifndef	_CONFIGD_H
 #define	_CONFIGD_H
 
-#include <bsm/adt.h>
-#include <door.h>
+
 #include <pthread.h>
-#include <synch.h>
 #include <string.h>
 #include <sys/types.h>
+
+#if 0
+#include <bsm/adt.h>
+#include <door.h>
+#include <synch.h>
+#endif
 
 #include <libscf.h>
 #include <repcache_protocol.h>
 #include <libuutil.h>
 
 #include <configd_exit.h>
+#include "creds.h"
 
 #ifdef	__cplusplus
 extern "C" {
@@ -481,9 +486,12 @@ typedef struct repcache_client {
 	int		rc_all_auths;	/* bypass auth checks */
 	uint32_t	rc_debug;	/* debug flags */
 	pid_t		rc_pid;		/* pid of opening process */
+#if 0
 	door_id_t	rc_doorid;	/* a globally unique identifier */
+#endif
 	int		rc_doorfd;	/* our door's FD */
 
+#if Have_ADT
 	/*
 	 * Constants used for security auditing
 	 *
@@ -498,6 +506,7 @@ typedef struct repcache_client {
 	adt_session_data_t *rc_adt_session;	/* Session data. */
 	au_asid_t	rc_adt_sessionid;	/* Main session ID for */
 						/* auditing */
+#endif
 
 	/*
 	 * client list linkage, protected by hash chain lock
@@ -636,7 +645,9 @@ void thread_newstate(thread_info_t *, thread_state_t);
 ucred_t *get_ucred(void);
 int ucred_is_privileged(ucred_t *);
 
+#if Have_ADT
 adt_session_data_t *get_audit_session(void);
+#endif
 
 void configd_critical(const char *, ...);
 void configd_vcritical(const char *, va_list);
