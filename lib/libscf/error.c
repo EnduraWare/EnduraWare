@@ -36,8 +36,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#if 0
 #include <sys/machelf.h>
 #include <thread.h>
+#endif
+
 
 #include <ucontext.h>
 

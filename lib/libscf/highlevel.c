@@ -35,10 +35,12 @@
 #include <string.h>
 #include <strings.h>
 #include <stdlib.h>
+#include <sys/utsname.h>
+#if 0
 #include <sys/systeminfo.h>
 #include <sys/uadmin.h>
-#include <sys/utsname.h>
 #include <sys/secflags.h>
+#endif
 
 #ifdef	__x86
 #include <smbios.h>
@@ -166,6 +168,7 @@ scf_get_boot_config(uint8_t *boot_config)
 	assert(boot_config);
 	*boot_config = 0;
 
+#if 0
 	{
 		/*
 		 * Property vector for BOOT_CONFIG_PG_PARAMS property group.
@@ -208,6 +211,7 @@ scf_get_boot_config(uint8_t *boot_config)
 		}
 #endif	/* FASTREBOOT_DEBUG */
 	}
+#endif
 }
 
 /*
@@ -306,8 +310,10 @@ scf_fastreboot_default_set_transient(boolean_t value)
 {
 	uint8_t	boot_config_ovr = 0;
 
+#if 0
 	if (value == B_TRUE)
 		boot_config_ovr = UA_FASTREBOOT_DEFAULT | UA_FASTREBOOT_ONPANIC;
+#endif
 
 	return (scf_getset_boot_config_ovr(B_TRUE, &boot_config_ovr));
 }
@@ -335,6 +341,7 @@ scf_is_fastboot_default(void)
 	uint8_t	boot_config = 0, boot_config_ovr;
 	char procbuf[SYS_NMLN];
 
+#if 0
 	/*
 	 * If we are on xVM, do not fast reboot by default.
 	 */
@@ -354,7 +361,13 @@ scf_is_fastboot_default(void)
 	scf_get_boot_config_ovr(&boot_config_ovr);
 
 	return (boot_config & boot_config_ovr & UA_FASTREBOOT_DEFAULT);
+#else
+	return 0;
+#endif
 }
+
+
+#if 0
 
 /*
  * Read the default security-flags from system/process-security and return a
@@ -364,7 +377,9 @@ scf_is_fastboot_default(void)
  * of the mapfile, even though we don't ever use it, and it will never work.
  */
 struct group_desc {
+#if 0
 	secflagdelta_t *delta;
+#endif
 	char *fmri;
 };
 
@@ -432,9 +447,18 @@ next:
 		}
 	}
 
+
 	return (0);
 #else
 	assert(0);
 	abort();
 #endif /* !NATIVE_BUILD */
 }
+
+#else
+int
+scf_default_secflags(scf_handle_t *hndl, scf_secflags_t *flags)
+{
+	return(0);
+}
+#endif

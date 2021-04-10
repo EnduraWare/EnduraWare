@@ -32,9 +32,11 @@
 #include <stddef.h>
 #include <libnvpair.h>
 
+#if 0
 #ifndef NATIVE_BUILD
 #include <sys/secflags.h>
 #endif	/* NATIVE_BUILD */
+#endif
 #include <sys/types.h>
 
 #ifdef	__cplusplus
@@ -226,9 +228,11 @@ typedef struct scf_tmpl_error scf_tmpl_error_t;
  */
 typedef struct {
 #ifndef NATIVE_BUILD
+#if 0
 	secflagdelta_t ss_default;
 	secflagdelta_t ss_lower;
 	secflagdelta_t ss_upper;
+#endif
 #else
 	/*
 	 * This is never used, but is necessary for bootstrapping.

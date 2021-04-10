@@ -29,8 +29,10 @@
 
 #include <libscf.h>
 #include <unistd.h>
+#if 0
 #if !defined(NATIVE_BUILD)
 #include <sys/secflags.h>
+#endif
 #endif
 
 #ifdef	__cplusplus
