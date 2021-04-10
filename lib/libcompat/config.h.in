@@ -1,0 +1,16 @@
+#ifndef CONFIG_H_
+#define CONFIG_H_
+
+#cmakedefine Plat_Linux
+#cmakedefine Plat_BSD
+#cmakedefine Plat_DragonFlyBSD
+#cmakedefine Plat_FreeBSD
+#cmakedefine Plat_NetBSD
+#cmakedefine Plat_OpenBSD
+
+/* types */
+
+/* variables and functions */
+#cmakedefine Have_program_invocation_short_name
+
+#endif
