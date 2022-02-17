@@ -626,7 +626,6 @@ typedef struct thread_info {
 	request_log_entry_t	ti_log;
 
 	struct rep_protocol_request *ti_client_request;
-	repository_door_request_t *ti_main_door_request;
 
 } thread_info_t;
 
@@ -639,11 +638,11 @@ typedef struct backend_tx backend_tx_t;
 /*
  * configd.c
  */
-int create_connection(ucred_t *cred, repository_door_request_t *rp,
-    size_t rp_size, int *out_fd);
+int create_connection(int fd);
 
 thread_info_t *thread_self(void);
 void thread_newstate(thread_info_t *, thread_state_t);
+thread_info_t *new_thread_needed(void *(*)(void *), repcache_client_t *);
 ucred_t *get_ucred(void);
 int ucred_is_privileged(ucred_t *);
 
@@ -668,7 +667,7 @@ int setup_main_door(const char *);
  */
 int client_annotation_needed(char *, size_t, char *, size_t);
 void client_annotation_finished(void);
-int create_client(pid_t, uint32_t, int, int *);
+int create_client(pid_t, uint32_t, int, int);
 int client_init(void);
 int client_is_privileged(void);
 void log_enter(request_log_entry_t *);

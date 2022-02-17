@@ -185,10 +185,7 @@ client_is_privileged(void)
 	    ti->ti_active_client->rc_all_auths)
 		return (1);
 
-	if ((uc = get_ucred()) == NULL)
-		return (0);
-
-	return (ucred_is_privileged(uc));
+	return (ucred_is_privileged(ti->ti_ucred));
 }
 
 /*ARGSUSED*/
@@ -1790,10 +1787,12 @@ backup_repository(repcache_client_t *cp,
     struct rep_protocol_backup_request *rpr)
 {
 	rep_protocol_responseid_t result;
-	ucred_t *uc = get_ucred();
+//	ucred_t *uc = get_ucred();
 
+#if 0 // FIXME: check creds
 	if (!client_is_privileged() && (uc == NULL || ucred_geteuid(uc) != 0))
 		return (REP_PROTOCOL_FAIL_PERMISSION_DENIED);
+#endif
 
 	rpr->rpr_name[REP_PROTOCOL_NAME_LEN - 1] = 0;
 	if (strcmp(rpr->rpr_name, REPOSITORY_BOOT_BACKUP) == 0)
@@ -2054,12 +2053,14 @@ repository_switch(repcache_client_t *cp,
     struct rep_protocol_switch_request *rpr)
 {
 	rep_protocol_responseid_t result;
-	ucred_t *uc = get_ucred();
+//	ucred_t *uc = get_ucred();
 
+#if 0 // FIXME: check creds
 	if (!client_is_privileged() && (uc == NULL ||
 	    ucred_geteuid(uc) != 0)) {
 		return (REP_PROTOCOL_FAIL_PERMISSION_DENIED);
 	}
+#endif
 
 	(void) pthread_mutex_lock(&cp->rc_lock);
 	if (rpr->rpr_changeid != cp->rc_changeid) {
@@ -2315,6 +2316,13 @@ client_init(void)
 	return (1);
 }
 
+static void *
+client_dispatcher(void *ti)
+{
+	return NULL;
+}
+
+#if 0
 static void
 client_switcher(void *cookie, char *argp, size_t arg_size, door_desc_t *desc_in,
     uint_t n_desc)
@@ -2458,20 +2466,12 @@ bad_end:
 	}
 	(void) door_return(NULL, 0, NULL, 0);
 }
+#endif
 
 int
-create_client(pid_t pid, uint32_t debugflags, int privileged, int *out_fd)
+create_client(pid_t pid, uint32_t debugflags, int privileged, int fd)
 {
-	int fd;
-
 	repcache_client_t *cp;
-
-	struct door_info info;
-
-	int door_flags = DOOR_UNREF | DOOR_REFUSE_DESC;
-#ifdef DOOR_NO_CANCEL
-	door_flags |= DOOR_NO_CANCEL;
-#endif
 
 	cp = client_alloc();
 	if (cp == NULL)
@@ -2485,41 +2485,17 @@ create_client(pid_t pid, uint32_t debugflags, int privileged, int *out_fd)
 	cp->rc_pid = pid;
 	cp->rc_debug = debugflags;
 
-#if 0
-#ifndef	NATIVE_BUILD
+#if !defined(NATIVE_BUILD) && Have_ADT
 	start_audit_session(cp);
 #endif
-#endif
 
-	cp->rc_doorfd = door_create(client_switcher, (void *)cp->rc_id,
-	    door_flags);
-
-	if (cp->rc_doorfd < 0) {
-		client_free(cp);
-		return (REPOSITORY_DOOR_FAIL_NO_RESOURCES);
-	}
-#ifdef DOOR_PARAM_DATA_MIN
-	(void) door_setparam(cp->rc_doorfd, DOOR_PARAM_DATA_MIN,
-	    sizeof (enum rep_protocol_requestid));
-#endif
-
-	if ((fd = dup(cp->rc_doorfd)) < 0 ||
-	    door_info(cp->rc_doorfd, &info) < 0) {
-		if (fd >= 0)
-			(void) close(fd);
-		(void) door_revoke(cp->rc_doorfd);
-		cp->rc_doorfd = -1;
-		client_free(cp);
-		return (REPOSITORY_DOOR_FAIL_NO_RESOURCES);
-	}
-
+	cp->rc_doorfd = fd;
 	rc_pg_notify_init(&cp->rc_pg_notify);
 	rc_notify_info_init(&cp->rc_notify_info);
 
 	client_insert(cp);
 
-	cp->rc_doorid = info.di_uniquifier;
-	*out_fd = fd;
+	new_thread_needed(client_dispatcher, cp);
 
 	return (REPOSITORY_DOOR_SUCCESS);
 }

@@ -33,8 +33,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <priv.h>
-#include <procfs.h>
 #include <pthread.h>
 #include <signal.h>
 #include <stdarg.h>
@@ -43,12 +41,17 @@
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
-#include <sys/corectl.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <ucontext.h>
 #include <unistd.h>
+
+#if 0
+#include <priv.h>
+#include <procfs.h>
+#include <sys/corectl.h>
+#endif
 
 #include "configd.h"
 
@@ -102,8 +105,6 @@ static int	privileged_psinfo_fd = -1;
 
 static int	privileged_user = 0;
 
-static priv_set_t *privileged_privs;
-
 static int	log_to_syslog = 0;
 
 int		is_main_repository = 1;
@@ -132,19 +133,7 @@ abort_handler(int sig, siginfo_t *sip, ucontext_t *ucp)
 {
 	struct sigaction act;
 
-	(void) sigemptyset(&act.sa_mask);
-	act.sa_handler = SIG_DFL;
-	act.sa_flags = 0;
-	(void) sigaction(sig, &act, NULL);
-
-	(void) printstack(2);
-
-	if (sip != NULL && SI_FROMUSER(sip))
-		(void) pthread_kill(pthread_self(), sig);
-	(void) sigfillset(&ucp->uc_sigmask);
-	(void) sigdelset(&ucp->uc_sigmask, sig);
-	ucp->uc_flags |= UC_SIGMASK;
-	(void) setcontext(ucp);
+	(void) pthread_kill(pthread_self(), sig);
 }
 
 /*
@@ -224,33 +213,13 @@ ucred_t *
 get_ucred(void)
 {
 	thread_info_t *ti = thread_self();
-	ucred_t **ret = &ti->ti_ucred;
-
-	if (ti->ti_ucred_read)
-		return (*ret);			/* cached value */
-
-	if (door_ucred(ret) != 0)
-		return (NULL);
-	ti->ti_ucred_read = 1;
-
-	return (*ret);
+	return ti->ti_ucred;
 }
 
 int
 ucred_is_privileged(ucred_t *uc)
 {
-	const priv_set_t *ps;
-
-	if ((ps = ucred_getprivset(uc, PRIV_EFFECTIVE)) != NULL) {
-		if (priv_isfullset(ps))
-			return (1);		/* process has all privs */
-
-		if (privileged_privs != NULL &&
-		    priv_issubset(privileged_privs, ps))
-			return (1);		/* process has zone privs */
-	}
-
-	return (0);
+	return uc->uid == 0;
 }
 
 #if Have_ADT
@@ -293,17 +262,15 @@ thread_start(void *arg)
 	return (arg);
 }
 
-static void
-new_thread_needed(door_info_t *dip)
+thread_info_t *
+new_thread_needed(void *(*thread_main)(void *), repcache_client_t *cp)
 {
 	thread_info_t *ti;
 
 	sigset_t new, old;
 
-	assert(dip == NULL);
-
 	if (!reserve_new_thread())
-		return;
+		return NULL;
 
 	if ((ti = uu_zalloc(sizeof (*ti))) == NULL)
 		goto fail;
@@ -311,20 +278,21 @@ new_thread_needed(door_info_t *dip)
 	uu_list_node_init(ti, &ti->ti_node, thread_pool);
 	ti->ti_state = TI_CREATED;
 	ti->ti_prev_state = TI_CREATED;
+	ti->ti_active_client = cp;
 
-	if ((ti->ti_ucred = uu_zalloc(ucred_size())) == NULL)
+	if ((ti->ti_ucred = uu_zalloc(sizeof(ucred_t))) == NULL)
 		goto fail;
 
 	(void) sigfillset(&new);
 	(void) pthread_sigmask(SIG_SETMASK, &new, &old);
-	if ((errno = pthread_create(&ti->ti_thread, &thread_attr, thread_start,
+	if ((errno = pthread_create(&ti->ti_thread, &thread_attr, thread_main,
 	    ti)) != 0) {
 		(void) pthread_sigmask(SIG_SETMASK, &old, NULL);
 		goto fail;
 	}
 
 	(void) pthread_sigmask(SIG_SETMASK, &old, NULL);
-	return;
+	return ti;
 
 fail:
 	/*
@@ -334,16 +302,17 @@ fail:
 	thread_exiting(NULL);
 	if (ti != NULL)
 		thread_info_free(ti);
+
+	return NULL;
 }
 
 int
-create_connection(ucred_t *uc, repository_door_request_t *rp,
-    size_t rp_size, int *out_fd)
+create_connection(int fd)
 {
 	int flags;
 	int privileged = 0;
 	uint32_t debugflags = 0;
-	psinfo_t info;
+	ucred_t ucred = { 0, 0, 0 }; // FIXME get socket ucred
 
 	if (privileged_pid != 0) {
 		/*
@@ -351,9 +320,7 @@ create_connection(ucred_t *uc, repository_door_request_t *rp,
 		 * our original parent -- the psinfo read verifies that
 		 * it is the same process which we started with.
 		 */
-		if (ucred_getpid(uc) != privileged_pid ||
-		    read(privileged_psinfo_fd, &info, sizeof (info)) !=
-		    sizeof (info))
+		if (ucred.pid != privileged_pid)
 			return (REPOSITORY_DOOR_FAIL_PERMISSION_DENIED);
 
 		privileged = 1;			/* it gets full privileges */
@@ -362,38 +329,13 @@ create_connection(ucred_t *uc, repository_door_request_t *rp,
 		 * in privileged user mode, only one particular user is
 		 * allowed to connect to us, and they can do anything.
 		 */
-		if (ucred_geteuid(uc) != privileged_user)
+		if (ucred.uid != privileged_user)
 			return (REPOSITORY_DOOR_FAIL_PERMISSION_DENIED);
 
 		privileged = 1;
 	}
 
-	/*
-	 * Check that rp, of size rp_size, is large enough to
-	 * contain field 'f'.  If so, write the value into *out, and return 1.
-	 * Otherwise, return 0.
-	 */
-#define	GET_ARG(rp, rp_size, f, out)					\
-	(((rp_size) >= offsetofend(repository_door_request_t, f)) ?	\
-	    ((*(out) = (rp)->f), 1) : 0)
-
-	if (!GET_ARG(rp, rp_size, rdr_flags, &flags))
-		return (REPOSITORY_DOOR_FAIL_BAD_REQUEST);
-
-#if (REPOSITORY_DOOR_FLAG_ALL != REPOSITORY_DOOR_FLAG_DEBUG)
-#error Need to update flag checks
-#endif
-
-	if (flags & ~REPOSITORY_DOOR_FLAG_ALL)
-		return (REPOSITORY_DOOR_FAIL_BAD_FLAG);
-
-	if (flags & REPOSITORY_DOOR_FLAG_DEBUG)
-		if (!GET_ARG(rp, rp_size, rdr_debug, &debugflags))
-			return (REPOSITORY_DOOR_FAIL_BAD_REQUEST);
-#undef GET_ARG
-
-	return (create_client(ucred_getpid(uc), debugflags, privileged,
-	    out_fd));
+	return (create_client(ucred.pid, debugflags, privileged, fd));
 }
 
 void
@@ -470,7 +412,7 @@ daemonize_start(void)
 	if (pipe(filedes) < 0)
 		return (-1);
 
-	if ((pid = fork1()) < 0)
+	if ((pid = fork()) < 0)
 		return (-1);
 
 	if (pid != 0) {
@@ -571,7 +513,9 @@ main(int argc, char *argv[])
 	int daemonize = 1;		/* default to daemonizing */
 	int have_npdb = 1;
 
+#if 0
 	closefrom(3);			/* get rid of extraneous fds */
+#endif
 
 	if (getcwd(curdir, sizeof (curdir)) == NULL) {
 		(void) fprintf(stderr,
@@ -631,12 +575,6 @@ main(int argc, char *argv[])
 		privileged_user = geteuid();
 	}
 
-	privileged_privs = priv_str_to_set("zone", "", &endptr);
-	if (endptr != NULL && privileged_privs != NULL) {
-		priv_freeset(privileged_privs);
-		privileged_privs = NULL;
-	}
-
 	openlog("svc.configd", LOG_PID | LOG_CONS, LOG_DAEMON);
 	(void) setlogmask(LOG_UPTO(LOG_NOTICE));
 
@@ -657,22 +595,11 @@ main(int argc, char *argv[])
 			exit(CONFIGD_EXIT_INIT_FAILED);
 		}
 	}
-	if (getuid() == 0)
-		(void) core_set_process_path(CONFIGD_CORE,
-		    strlen(CONFIGD_CORE) + 1, getpid());
 
 	/*
 	 * this should be enabled once we can drop privileges and still get
 	 * a core dump.
 	 */
-#if 0
-	/* turn off basic privileges we do not need */
-	(void) priv_set(PRIV_OFF, PRIV_PERMITTED, PRIV_FILE_LINK_ANY,
-	    PRIV_PROC_EXEC, PRIV_PROC_FORK, PRIV_PROC_SESSION, NULL);
-#endif
-
-	/* not that we can exec, but to be safe, shut them all off... */
-	(void) priv_set(PRIV_SET, PRIV_INHERITABLE, NULL);
 
 	(void) sigfillset(&act.sa_mask);
 
@@ -715,7 +642,7 @@ main(int argc, char *argv[])
 	fd_new.rlim_max = fd_new.rlim_cur = CONFIGD_MAX_FDS;
 	(void) setrlimit(RLIMIT_NOFILE, &fd_new);
 
-#ifndef NATIVE_BUILD /* Allow building on snv_38 and earlier; remove later. */
+#if defined(OS_Solaris) && !defined(NATIVE_BUILD) /* Allow building on snv_38 and earlier; remove later. */
 	(void) enable_extended_FILE_stdio(-1, -1);
 #endif
 
@@ -764,8 +691,6 @@ main(int argc, char *argv[])
 
 	(void) pthread_setspecific(thread_info_key, ti);
 
-	(void) door_server_create(new_thread_needed);
-
 	if (!setup_main_door(doorpath)) {
 		configd_critical("Setting up main door failed.\n");
 		exit(CONFIGD_EXIT_DOOR_INIT_FAILED);
@@ -776,7 +701,8 @@ main(int argc, char *argv[])
 
 	(void) pthread_sigmask(SIG_BLOCK, &myset, NULL);
 	while (!finished) {
-		int sig = sigwait(&myset);
+		int sig;
+		int ret = sigwait(&myset, &sig);
 		if (sig > 0) {
 			break;
 		}

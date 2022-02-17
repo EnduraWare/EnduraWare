@@ -1545,6 +1545,7 @@ perm_granted(permcheck_t *pcp)
 	char pwbuf[1024];	/* XXX should be NSS_BUFLEN_PASSWD */
 
 	/* Get the uid */
+#if 0 // FIXME: check creds
 	if ((uc = get_ucred()) == NULL) {
 		if (errno == EINVAL) {
 			/*
@@ -1564,8 +1565,9 @@ perm_granted(permcheck_t *pcp)
 		assert(0);
 		abort();
 	}
+#endif
 
-	uid = ucred_geteuid(uc);
+	uid = uc->uid;
 	assert(uid != (uid_t)-1);
 
 	if (getpwuid_r(uid, &pw, pwbuf, sizeof (pwbuf), &pwr) == NULL) {

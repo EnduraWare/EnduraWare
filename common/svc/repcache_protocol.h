@@ -366,12 +366,11 @@
  */
 
 #include <stddef.h>
+#include <stdint.h>
 #include <sys/sysmacros.h>
 #include <sys/param.h>
 
-#if 0
-#include <door.h>
-#endif
+#include "door.h"
 
 #ifdef	__cplusplus
 extern "C" {
