@@ -29,7 +29,7 @@
 
 #include <sys/types.h>
 #include <libscf.h>
-#include <md5.h>
+#include <openssl/md5.h>
 
 #ifdef	__cplusplus
 extern "C" {

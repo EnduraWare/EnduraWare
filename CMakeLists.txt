@@ -54,6 +54,7 @@ endif()
 # prerequisites
 #
 find_package(Threads)
+find_package(libxml2)
 
 
 #

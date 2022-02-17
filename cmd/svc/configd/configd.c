@@ -133,6 +133,8 @@ abort_handler(int sig, siginfo_t *sip, ucontext_t *ucp)
 {
 	struct sigaction act;
 
+	printf("I am the abort handler\n");
+
 	(void) pthread_kill(pthread_self(), sig);
 }
 
@@ -239,11 +241,8 @@ get_audit_session(void)
 }
 #endif
 
-static void *
-thread_start(void *arg)
+void thread_setup(thread_info_t *ti)
 {
-	thread_info_t *ti = arg;
-
 	(void) pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL);
 
 	(void) pthread_mutex_lock(&thread_lock);
@@ -252,14 +251,6 @@ thread_start(void *arg)
 	    ti);
 	(void) pthread_mutex_unlock(&thread_lock);
 	(void) pthread_setspecific(thread_info_key, ti);
-
-	thread_newstate(ti, TI_DOOR_RETURN);
-
-	/*
-	 * Start handling door calls
-	 */
-	(void) door_return(NULL, 0, NULL, 0);
-	return (arg);
 }
 
 thread_info_t *
@@ -612,6 +603,7 @@ main(int argc, char *argv[])
 	(void) sigaction(SIGUSR2, &act, NULL);
 	(void) sigaction(SIGPOLL, &act, NULL);
 
+#if 0
 	/* signals to abort on */
 	act.sa_sigaction = (void (*)(int, siginfo_t *, void *))&abort_handler;
 	act.sa_flags = SA_SIGINFO;
@@ -630,6 +622,7 @@ main(int argc, char *argv[])
 	(void) sigaddset(&myset, SIGHUP);
 	(void) sigaddset(&myset, SIGINT);
 	(void) sigaddset(&myset, SIGTERM);
+#endif
 
 	if ((errno = pthread_attr_init(&thread_attr)) != 0) {
 		(void) perror("initializing");

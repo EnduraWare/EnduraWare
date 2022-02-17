@@ -36,7 +36,7 @@
 #include <fcntl.h>
 #include <libintl.h>
 #include <libtecla.h>
-#include <md5.h>
+#include <openssl/md5.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>

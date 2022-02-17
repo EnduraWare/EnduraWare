@@ -4,6 +4,7 @@
 #include <sys/types.h>
 
 #define __NORETURN
+#define __unused
 
 /* sys/time.h compat */
 #define	SEC		1

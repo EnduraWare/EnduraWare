@@ -46,7 +46,7 @@
 #include <libscf.h>
 #include <libscf_priv.h>
 #include <libuutil.h>
-#include <sasl/saslutil.h>
+//#include <sasl/saslutil.h>
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
@@ -60,6 +60,8 @@
 
 #include "svccfg.h"
 #include "notify_params.h"
+
+#include "compat.h"
 
 /*
  * snprintf(3C) format strings for constructing property names that include
@@ -103,8 +105,8 @@ const char * const active_attr = "active";
 /* Attribute values */
 const char * const all_value = "all";
 
-const char * const true = "true";
-const char * const false = "false";
+const char * const truestr = "truestr";
+const char * const falsestr = "falsestr";
 
 /*
  * The following list must be kept in the same order as that of
@@ -302,10 +304,10 @@ lxml_xlate_element(const xmlChar *tag)
 static uint_t
 lxml_xlate_boolean(const xmlChar *value)
 {
-	if (xmlStrcmp(value, (const xmlChar *)true) == 0)
+	if (xmlStrcmp(value, (const xmlChar *)truestr) == 0)
 		return (1);
 
-	if (xmlStrcmp(value, (const xmlChar *)false) == 0)
+	if (xmlStrcmp(value, (const xmlChar *)falsestr) == 0)
 		return (0);
 
 	uu_die(gettext("illegal boolean value \"%s\"\n"), value);
@@ -368,7 +370,7 @@ lxml_type_to_element(scf_type_t type)
 /*
  * Create a SCF_TYPE_BOOLEAN property name pname and attach it to the
  * property group at pgrp.  The value of the property will be set from the
- * attribute named attr.  attr must have a value of 0, 1, true or false.
+ * attribute named attr.  attr must have a value of 0, 1, truestr or falsestr.
  *
  * Zero is returned on success.  An error is indicated by -1.  It indicates
  * that either the attribute had an invalid value or that we could not
@@ -379,7 +381,7 @@ static int
 new_bool_prop_from_attr(pgroup_t *pgrp, const char *pname, xmlNodePtr n,
     const char *attr)
 {
-	uint64_t bool;
+	uint64_t abool;
 	xmlChar *val;
 	property_t *p;
 	int r;
@@ -389,17 +391,17 @@ new_bool_prop_from_attr(pgroup_t *pgrp, const char *pname, xmlNodePtr n,
 		return (0);
 
 	if ((xmlStrcmp(val, (xmlChar *)"0") == 0) ||
-	    (xmlStrcmp(val, (xmlChar *)"false") == 0)) {
-		bool = 0;
+	    (xmlStrcmp(val, (xmlChar *)"falsestr") == 0)) {
+		abool = 0;
 	} else if ((xmlStrcmp(val, (xmlChar *)"1") == 0) ||
-	    (xmlStrcmp(val, (xmlChar *)"true") == 0)) {
-		bool = 1;
+	    (xmlStrcmp(val, (xmlChar *)"truestr") == 0)) {
+		abool = 1;
 	} else {
 		xmlFree(val);
 		return (-1);
 	}
 	xmlFree(val);
-	p = internal_property_create(pname, SCF_TYPE_BOOLEAN, 1, bool);
+	p = internal_property_create(pname, SCF_TYPE_BOOLEAN, 1, abool);
 	r = internal_attach_property(pgrp, p);
 
 	if (r != 0)
@@ -714,7 +716,7 @@ lxml_get_propval(pgroup_t *pgrp, xmlNodePtr propval)
 	xmlFree(type);
 
 	override = xmlGetProp(propval, (xmlChar *)override_attr);
-	p->sc_property_override = (xmlStrcmp(override, (xmlChar *)true) == 0);
+	p->sc_property_override = (xmlStrcmp(override, (xmlChar *)truestr) == 0);
 	xmlFree(override);
 
 	return (internal_attach_property(pgrp, p));
@@ -813,7 +815,7 @@ lxml_get_property(pgroup_t *pgrp, xmlNodePtr property)
 	xmlFree(type);
 
 	override = xmlGetProp(property, (xmlChar *)override_attr);
-	p->sc_property_override = (xmlStrcmp(override, (xmlChar *)true) == 0);
+	p->sc_property_override = (xmlStrcmp(override, (xmlChar *)truestr) == 0);
 	xmlFree(override);
 
 	return (internal_attach_property(pgrp, p));
@@ -876,7 +878,7 @@ lxml_get_pgroup(entity_t *entity, xmlNodePtr pgroup)
 	}
 
 	delete = xmlGetProp(pgroup, (xmlChar *)delete_attr);
-	pg->sc_pgroup_delete = (xmlStrcmp(delete, (xmlChar *)true) == 0);
+	pg->sc_pgroup_delete = (xmlStrcmp(delete, (xmlChar *)truestr) == 0);
 	xmlFree(delete);
 
 	return (0);
@@ -1140,7 +1142,7 @@ lxml_get_exec_method(entity_t *entity, xmlNodePtr emeth)
 	}
 
 	delete = xmlGetProp(emeth, (xmlChar *)delete_attr);
-	pg->sc_pgroup_delete = (xmlStrcmp(delete, (xmlChar *)true) == 0);
+	pg->sc_pgroup_delete = (xmlStrcmp(delete, (xmlChar *)truestr) == 0);
 	xmlFree(delete);
 
 	return (0);
@@ -1236,7 +1238,7 @@ lxml_get_dependency(entity_t *entity, xmlNodePtr dependency)
 	}
 
 	delete = xmlGetProp(dependency, (xmlChar *)delete_attr);
-	pg->sc_pgroup_delete = (xmlStrcmp(delete, (xmlChar *)true) == 0);
+	pg->sc_pgroup_delete = (xmlStrcmp(delete, (xmlChar *)truestr) == 0);
 	xmlFree(delete);
 
 	return (0);
@@ -1276,7 +1278,7 @@ lxml_get_dependent(entity_t *entity, xmlNodePtr dependent)
 	pg = internal_pgroup_new();
 	pg->sc_pgroup_name = (char *)name;
 	pg->sc_pgroup_type = (char *)SCF_GROUP_DEPENDENCY;
-	pg->sc_pgroup_override = (xmlStrcmp(or, (xmlChar *)true) == 0);
+	pg->sc_pgroup_override = (xmlStrcmp(or, (xmlChar *)truestr) == 0);
 	xmlFree(or);
 	if (internal_attach_dependent(entity, pg) != 0) {
 		xmlFree(name);
@@ -1356,7 +1358,7 @@ lxml_get_dependent(entity_t *entity, xmlNodePtr dependent)
 	}
 
 	delete = xmlGetProp(dependent, (xmlChar *)delete_attr);
-	pg->sc_pgroup_delete = (xmlStrcmp(delete, (xmlChar *)true) == 0);
+	pg->sc_pgroup_delete = (xmlStrcmp(delete, (xmlChar *)truestr) == 0);
 	xmlFree(delete);
 
 	pg = internal_pgroup_find_or_create(entity, "dependents",
@@ -1521,7 +1523,7 @@ lxml_get_type(pgroup_t *pgrp, xmlNodePtr type)
 	}
 
 	active = xmlGetProp(type, (xmlChar *)active_attr);
-	if (active == NULL || strcmp(true, (const char *)active) == 0)
+	if (active == NULL || strcmp(truestr, (const char *)active) == 0)
 		active_val = 1;
 	else
 		active_val = 0;
@@ -3162,7 +3164,7 @@ lxml_get_default_instance(entity_t *service, xmlNodePtr definst)
 	i = internal_instance_new("default");
 
 	if ((enabled = xmlGetProp(definst, (xmlChar *)enabled_attr)) != NULL) {
-		enabled_val = (strcmp(true, (const char *)enabled) == 0) ?
+		enabled_val = (strcmp(truestr, (const char *)enabled) == 0) ?
 		    1 : 0;
 		xmlFree(enabled);
 	}
@@ -3240,8 +3242,8 @@ lxml_get_instance(entity_t *service, xmlNodePtr inst, bundle_type_t bt,
 			return (-1);
 		}
 	} else {	/* enabled != NULL */
-		if (strcmp(true, (const char *)enabled) != 0 &&
-		    strcmp(false, (const char *)enabled) != 0) {
+		if (strcmp(truestr, (const char *)enabled) != 0 &&
+		    strcmp(falsestr, (const char *)enabled) != 0) {
 			xmlFree(enabled);
 			semerr(gettext("Invalid enabled value\n"));
 			return (-1);
@@ -3253,7 +3255,7 @@ lxml_get_instance(entity_t *service, xmlNodePtr inst, bundle_type_t bt,
 		pg->sc_pgroup_type = (char *)scf_group_framework;
 		pg->sc_pgroup_flags = 0;
 
-		e_val = (strcmp(true, (const char *)enabled) == 0);
+		e_val = (strcmp(truestr, (const char *)enabled) == 0);
 		p = internal_property_create(SCF_PROPERTY_ENABLED,
 		    SCF_TYPE_BOOLEAN, 1, (uint64_t)e_val);
 
@@ -3460,7 +3462,7 @@ lxml_get_service(bundle_t *bundle, xmlNodePtr svc, svccfg_op_t op)
 	xmlFree(type);
 
 	/*
-	 * Set the global missing type to false before processing the service
+	 * Set the global missing type to falsestr before processing the service
 	 */
 	est->sc_miss_type = B_FALSE;
 	s->sc_op = op;

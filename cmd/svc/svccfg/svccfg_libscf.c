@@ -762,7 +762,7 @@ static void
 start_private_repository(engine_state_t *est)
 {
 	int fd, stat;
-	struct door_info info;
+	//struct door_info info;
 	pid_t pid;
 
 	/*
@@ -818,14 +818,20 @@ start_private_repository(engine_state_t *est)
 		uu_die(gettext("Could not open door \"%s\""),
 		    est->sc_repo_doorname);
 
+#if 0
 	if (door_info(fd, &info) < 0)
 		uu_die(gettext("Unexpected door_info() error"));
+#endif
 
 	if (close(fd) == -1)
 		warn(gettext("Could not close repository door"),
 		    strerror(errno));
 
+#if 0
 	est->sc_repo_pid = info.di_target;
+#else
+	est->sc_repo_pid = 0;
+#endif
 }
 
 void

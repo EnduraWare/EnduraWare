@@ -642,6 +642,8 @@ int create_connection(int fd);
 
 thread_info_t *thread_self(void);
 void thread_newstate(thread_info_t *, thread_state_t);
+/** set up a new thread; should be called from all thread mains */
+void thread_setup(thread_info_t * ti);
 thread_info_t *new_thread_needed(void *(*)(void *), repcache_client_t *);
 ucred_t *get_ucred(void);
 int ucred_is_privileged(ucred_t *);

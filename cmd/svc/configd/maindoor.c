@@ -52,7 +52,9 @@ static int		main_door_fd = -1;
 static void*
 main_switcher(void *v)
 {
-	thread_info_t *ti = thread_self();
+	thread_info_t *ti = (thread_info_t*)v;
+
+	thread_setup(ti);
 
 	while (true) {
 		int fd;

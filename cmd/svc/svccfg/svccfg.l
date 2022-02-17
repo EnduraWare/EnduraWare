@@ -41,6 +41,7 @@
  * to these call the functions we provide at the end of this source file,
  * instead of the default versions based on libc's stdio.
  */
+#define YY_NO_INPUT
 #ifdef input
 #undef input
 #endif

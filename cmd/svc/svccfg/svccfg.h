@@ -383,8 +383,8 @@ extern const char * const enabled_attr;
 extern const char * const active_attr;
 extern const char * const scf_pg_general;
 extern const char * const scf_group_framework;
-extern const char * const true;
-extern const char * const false;
+extern const char * const truestr;
+extern const char * const falsestr;
 
 #define	uu_list_append(list, elem)	uu_list_insert_before(list, NULL, elem)
 #define	uu_list_prepend(list, elem)	uu_list_insert_after(list, NULL, elem)

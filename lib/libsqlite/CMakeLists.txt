@@ -40,3 +40,6 @@ add_library(nw-sqlite src/attach.c src/auth.c src/btree.c src/btree_rb.c
 target_include_directories(nw-sqlite
     PUBLIC ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
     PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+add_executable(nw-sqlite-showdb tool/showdb.c)
+target_link_libraries(nw-sqlite-showdb nw-sqlite)
