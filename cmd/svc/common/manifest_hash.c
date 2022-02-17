@@ -35,7 +35,7 @@
 #include <libscf.h>
 #include <libuutil.h>
 #include <limits.h>
-#include <md5.h>
+#include <openssl/md5.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -522,6 +522,16 @@ out:
 	scf_scope_destroy(scope);
 
 	return (result);
+}
+
+void
+md5_calc(unsigned char *output, unsigned char *input, unsigned int inlen)
+{
+	MD5_CTX context;
+
+	MD5_Init(&context);
+	MD5_Update(&context, input, inlen);
+	MD5_Final(output, &context);
 }
 
 /*

@@ -24,8 +24,9 @@
  * Use is subject to license terms.
  */
 
-#include "nvpair.h"
 #include <stdlib.h>
+
+#include "sys/nvpair.h"
 
 /*ARGSUSED*/
 static void *

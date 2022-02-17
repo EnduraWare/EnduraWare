@@ -764,6 +764,7 @@ start_private_repository(engine_state_t *est)
 	int fd, stat;
 	//struct door_info info;
 	pid_t pid;
+	char buf[MAXPATHLEN];
 
 	/*
 	 * 1.  Create a temporary file for the door.
@@ -771,8 +772,8 @@ start_private_repository(engine_state_t *est)
 	if (est->sc_repo_doorname != NULL)
 		free((void *)est->sc_repo_doorname);
 
-	est->sc_repo_doorname = tempnam(est->sc_repo_doordir, "scfdr");
-	if (est->sc_repo_doorname == NULL)
+	sprintf(buf, "%sscfdrXXXXXX", est->sc_repo_doordir);
+	if (mkstemp(buf) < 0)
 		uu_die(gettext("Could not acquire temporary filename"));
 
 	fd = open(est->sc_repo_doorname, O_CREAT | O_EXCL | O_RDWR, 0600);

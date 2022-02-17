@@ -473,7 +473,8 @@ out:
 	 * name of the log file.
 	 */
 	root[0] = '\0';
-	(void) zone_get_rootpath(g_zonename, root, sizeof (root));
+	assert(!"unreached");
+	//(void) zone_get_rootpath(g_zonename, root, sizeof (root));
 	(void) strlcat(root, vp, sizeof (root));
 	(void) snprintf(vp, sz, "%s", root);
 

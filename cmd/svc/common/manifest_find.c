@@ -71,7 +71,13 @@ typedef struct mftsd {
 	scf_handle_t	*tsd_hndl;	/* Handle for libscf. */
 } mftsd_t;
 
+#ifdef PTHREAD_ONCE_KEY_NP
 static pthread_key_t tsd_key = PTHREAD_ONCE_KEY_NP;
+#else	/* PTHREAD_ONCE_KEY_NP */
+static int		tsd_key_setup = 0;
+static pthread_key_t 	tsd_key = 0;
+static pthread_mutex_t	tsd_key_lock = PTHREAD_MUTEX_INITIALIZER;
+#endif	/* PTHREAD_ONCE_KEY_NP */
 
 /*
  * Add the manifest info consisting of filename (fn), hash property name
@@ -134,8 +140,17 @@ get_thread_specific_data()
 {
 	mftsd_t *tsdp;
 
-	if (pthread_key_create_once_np(&tsd_key, NULL) != 0)
-		return (NULL);
+	if (tsd_key_setup == 0) {
+		(void) pthread_mutex_lock(&tsd_key_lock);
+		if (tsd_key_setup == 0) {
+			if (pthread_key_create(&tsd_key, NULL) != 0)
+				return NULL;
+			else
+				tsd_key_setup = 1;
+		}
+		(void) pthread_mutex_unlock(&tsd_key_lock);
+	}
+
 	tsdp = (mftsd_t *)pthread_getspecific(tsd_key);
 	if (tsdp == NULL) {
 		/*

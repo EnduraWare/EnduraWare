@@ -36,6 +36,8 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
+#include "compat.h"
+
 #define	UTF8_TOP_N(n) \
 	(0xff ^ (0xff >> (n)))		/* top N bits set */
 
@@ -195,10 +197,13 @@ valid_uri(const char *str)
 	if (strlen(str) >= REP_PROTOCOL_VALUE_LEN)
 		return (0);
 
+#if 0
+	// FIXME validate URI
 	if (regex(exp, str, uri[URI_SCHEME], uri[URI_AUTHORITY], uri[URI_PATH],
 	    uri[URI_QUERY], uri[URI_FRAGMENT]) == NULL) {
 		return (0);
 	}
+#endif
 	/*
 	 * To be a valid URI, the length of the URI_PATH must not be zero
 	 */

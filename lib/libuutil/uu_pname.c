@@ -165,11 +165,11 @@ uu_xdie(int status, const char *format, ...)
 	va_end(alist);
 }
 
-#if 0
 /* Code to set the process name, I think. */
 const char *
 uu_setpname(char *arg0)
 {
+	#if 0
 	/*
 	 * Having a NULL argv[0], while uncommon, is possible.  It
 	 * makes more sense to handle this event in uu_setpname rather
@@ -212,8 +212,10 @@ uu_setpname(char *arg0)
 	}
 
 	return (pname);
-}
+#else
+	printf("[unimplemented] set pname to %s\n", arg0);
 #endif
+}
 
 const char *
 uu_getpname(void)

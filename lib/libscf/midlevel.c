@@ -40,6 +40,8 @@
 #include "midlevel_impl.h"
 #include "lowlevel_impl.h"
 
+#include "compat.h"
+
 #ifndef NDEBUG
 #define	bad_error(func, err)	{					\
 	uu_warn("%s:%d: %s failed with unexpected error %d.  Aborting.\n", \
@@ -2716,8 +2718,8 @@ scf_read_propvec(const char *fmri, const char *pgname, boolean_t running,
 				*bits = b ? (*bits | prop->pv_aux) :
 				    (*bits & ~prop->pv_aux);
 			} else {
-				boolean_t *bool = prop->pv_ptr;
-				*bool = b ? B_TRUE : B_FALSE;
+				boolean_t *abool = prop->pv_ptr;
+				*abool = b ? B_TRUE : B_FALSE;
 			}
 			break;
 		}

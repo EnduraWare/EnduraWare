@@ -67,10 +67,26 @@ typedef struct door_desc {
 	} d_data;
 } door_desc_t;
 
+/*
+ * Structure used to pass/return data from door_call
+ *
+ * All fields are in/out paramters. Upon return these fields
+ * are updated to reflect the true location and size of the results.
+ */
+typedef struct door_arg {
+	char		*data_ptr;	/* Argument/result data */
+	size_t		data_size;	/* Argument/result data size */
+	door_desc_t	*desc_ptr;	/* Argument/result descriptors */
+	uint_t		desc_num;	/* Argument/result num discriptors */
+	char		*rbuf;		/* Result area */
+	size_t		rsize;		/* Result size */
+} door_arg_t;
+
+
 typedef void door_server_procedure_t(void *, char *, size_t, door_desc_t *,
     uint_t);
 
-int	door_create(door_server_procedure_t *, void *, uint_t, const char *);
+int	door_call(int, door_arg_t *);
 int	door_return(char *, size_t, door_desc_t *, uint_t);
 int	door_ucred(ucred_t **);
 

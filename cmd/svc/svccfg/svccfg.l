@@ -64,6 +64,8 @@ extern int yyerror(const char *);
 
 %}
 
+%option noyywrap
+
 /*
  * Since command tokens are only valid at the beginning of the command (or
  * after help), we'll only return them in the INITIAL state, and report them

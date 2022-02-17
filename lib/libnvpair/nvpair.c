@@ -23,15 +23,12 @@
  * Copyright (c) 2000, 2010, Oracle and/or its affiliates. All rights reserved.
  */
 
-#if !defined(__APPLE__)
-#include <sys/stropts.h>
-#endif
 //#include <sys/debug.h>
 #include <assert.h>
 #define ASSERT(x) assert(x)
 #include "isa_defs.h"
 #include <inttypes.h>
-#include "nvpair.h"
+#include "sys/nvpair.h"
 #include "nvpair_impl.h"
 //#include <rpc/types.h>
 //#include <rpc/xdr.h>

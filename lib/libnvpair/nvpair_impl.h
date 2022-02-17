@@ -31,7 +31,7 @@
 extern "C" {
 #endif
 
-#include "nvpair.h"
+#include "sys/nvpair.h"
 
 /*
  * The structures here provided for information and debugging purposes only

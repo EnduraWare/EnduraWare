@@ -67,6 +67,7 @@
 #include <libintl.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <strings.h>
 #include <locale.h>
 #include <ctype.h>
@@ -487,7 +488,7 @@ _scf_read_tmpl_prop_type_as_string(const scf_prop_tmpl_t *pt)
  */
 static int
 _read_single_boolean_from_pg(scf_propertygroup_t *pg, const char *prop_name,
-    uint8_t *bool)
+    uint8_t *abool)
 {
 	scf_value_t *val;
 	int ret = 0;
@@ -495,7 +496,7 @@ _read_single_boolean_from_pg(scf_propertygroup_t *pg, const char *prop_name,
 	if (_read_single_value_from_pg(pg, prop_name, &val) == -1)
 		return (-1);
 
-	if (scf_value_get_boolean(val, bool) < 0) {
+	if (scf_value_get_boolean(val, abool) < 0) {
 		assert(scf_error() != SCF_ERROR_NOT_SET);
 		ret = -1;
 	}

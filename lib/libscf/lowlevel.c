@@ -39,23 +39,24 @@
 
 #include <assert.h>
 #include <alloca.h>
-#include <door.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <fnmatch.h>
 #include <libuutil.h>
 #include <poll.h>
 #include <pthread.h>
-#include <synch.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/sysmacros.h>
-#include <libzonecfg.h>
 #include <unistd.h>
 #include <dlfcn.h>
+
+#include "compat.h"
+#include "door.h"
+#include "threads.h"
 
 #define	ENV_SCF_DEBUG		"LIBSCF_DEBUG"
 #define	ENV_SCF_DOORPATH	"LIBSCF_DOORPATH"
@@ -229,6 +230,9 @@ iter_compare(const void *l_arg, const void *r_arg, void *private)
 		return (-1);
 	return (0);
 }
+
+// FIXME 
+static int issetugid() { return 0; }
 
 static int
 lowlevel_init(void)
@@ -569,11 +573,11 @@ handle_is_bound(scf_handle_t *h)
 static int
 handle_has_server_locked(scf_handle_t *h)
 {
-	door_info_t i;
+	//door_info_t i;
 	assert(MUTEX_HELD(&h->rh_lock));
 
-	return (handle_is_bound(h) && door_info(h->rh_doorfd, &i) != -1 &&
-	    i.di_target != -1);
+	return (handle_is_bound(h) /*&& door_info(h->rh_doorfd, &i) != -1 &&
+	    i.di_target != -1*/);
 }
 
 static int
@@ -899,6 +903,7 @@ scf_handle_decorate(scf_handle_t *handle, const char *name, scf_value_t *v)
 	}
 
 	if (strcmp(name, "zone") == 0) {
+#if 0
 		char zone[MAXPATHLEN], root[MAXPATHLEN], door[MAXPATHLEN];
 		static int (*zone_get_rootpath)(char *, char *, size_t);
 		ssize_t len;
@@ -956,6 +961,9 @@ scf_handle_decorate(scf_handle_t *handle, const char *name, scf_value_t *v)
 		(void) pthread_mutex_unlock(&handle->rh_lock);
 
 		return (0);
+#else
+		return (scf_set_error(SCF_ERROR_INVALID_ARGUMENT));
+#endif
 	}
 
 	return (scf_set_error(SCF_ERROR_INVALID_ARGUMENT));
@@ -1138,13 +1146,14 @@ iter_attach(scf_iter_t *iter)
 int
 scf_handle_bind(scf_handle_t *handle)
 {
+	// PORTME
+#if 0
 	scf_datael_t *el;
 	scf_iter_t *iter;
 
 	pid_t pid;
 	int fd;
 	int res;
-	door_info_t info;
 	repository_door_request_t request;
 	repository_door_response_t response;
 	const char *door_name = default_door_path;
@@ -1242,7 +1251,7 @@ scf_handle_bind(scf_handle_t *handle)
 	}
 
 	handle->rh_doorpid = pid;
-	handle->rh_doorid = info.di_uniquifier;
+	handle->rh_doorid = rand();
 
 	/*
 	 * Now, re-attach everything
@@ -1267,6 +1276,7 @@ scf_handle_bind(scf_handle_t *handle)
 		}
 	}
 	(void) pthread_mutex_unlock(&handle->rh_lock);
+#endif
 	return (SCF_SUCCESS);
 }
 
