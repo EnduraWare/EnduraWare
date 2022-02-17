@@ -87,11 +87,13 @@ extern const char *uu_getpname(void);
 extern void uu_warn(const char *, ...);
 extern void uu_vwarn(const char *, va_list);
 /*PRINTFLIKE1*/
+void uu_panic(const char *format, ...);
 extern void uu_die(const char *, ...) __NORETURN;
 extern void uu_vdie(const char *, va_list) __NORETURN;
 /*PRINTFLIKE2*/
 extern void uu_xdie(int, const char *, ...) __NORETURN;
 extern void uu_vxdie(int, const char *, va_list) __NORETURN;
+
 
 /*
  * Exit status functions (not to be used directly)

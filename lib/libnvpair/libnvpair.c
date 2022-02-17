@@ -32,6 +32,8 @@
 #define NOTE(s)
 #include "libnvpair.h"
 
+#pragma GCC diagnostic ignored "-Wformat-security"
+
 /*
  * libnvpair - A tools library for manipulating <name, value> pairs.
  *

@@ -17,8 +17,6 @@ list(APPEND CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE -D__BSD_VISIBLE")
 
 macro(check_type_size_in type headers var)
   cmake_push_check_state()
-  # why must I do it twice, CMake?! I never asked to clear it in the first
-  # place!!
   list(APPEND CMAKE_REQUIRED_DEFINITIONS "-D_GNU_SOURCE -D__BSD_VISIBLE")
   set(CMAKE_EXTRA_INCLUDE_FILES ${headers})
   check_type_size(${type} ${var})
@@ -51,6 +49,12 @@ elseif(CMAKE_SYSTEM_NAME MATCHES "HP-UX")
 elseif(APPLE)
     set(Plat_BSD TRUE)
 endif()
+
+#
+# prerequisites
+#
+find_package(Threads)
+
 
 #
 # types

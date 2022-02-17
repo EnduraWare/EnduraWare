@@ -766,6 +766,13 @@ struct rep_protocol_transaction_cmd {
 #define	REP_PROTOCOL_TRANSACTION_CMD_MIN_SIZE \
 	    REP_PROTOCOL_TRANSACTION_CMD_SIZE(0)
 
+/*
+ * return x rounded up to an align boundary
+ * eg, P2ROUNDUP(0x1234, 0x100) == 0x1300 (0x13*align)
+ * eg, P2ROUNDUP(0x5600, 0x100) == 0x5600 (0x56*align)
+ */
+#define	P2ROUNDUP(x, align)		(-(-(x) & -(align)))
+
 #define	TX_SIZE(x)	P2ROUNDUP((x), sizeof (uint32_t))
 
 struct rep_protocol_transaction_request {

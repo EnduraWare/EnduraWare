@@ -47,6 +47,8 @@
 #include <libuutil.h>
 
 #include <configd_exit.h>
+
+#include "threads.h"
 #include "creds.h"
 
 #ifdef	__cplusplus
@@ -718,7 +720,7 @@ int rc_node_delete(rc_node_ptr_t *);
 int rc_node_next_snaplevel(rc_node_ptr_t *, rc_node_ptr_t *);
 
 int rc_node_setup_iter(rc_node_ptr_t *, rc_node_iter_t **, uint32_t,
-    size_t, const char *);
+    uint32_t, const char *);
 
 int rc_iter_next(rc_node_iter_t *, rc_node_ptr_t *, uint32_t);
 int rc_iter_next_value(rc_node_iter_t *, struct rep_protocol_value_response *,

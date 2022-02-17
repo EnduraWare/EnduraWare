@@ -353,8 +353,6 @@
  */
 
 #include <assert.h>
-#include <atomic.h>
-#include <bsm/adt_event.h>
 #include <errno.h>
 #include <libuutil.h>
 #include <libscf.h>
@@ -363,11 +361,23 @@
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <strings.h>
 #include <sys/types.h>
 #include <syslog.h>
 #include <unistd.h>
+
+#if 0
+#include <atomic.h>
+#include <bsm/adt_event.h>
 #include <secdb.h>
+#endif
+
+/* compats */
+#include "bsm/adt_event.h"
+#include "atomic.h"
+#include "threads.h"
+#include "secdb.h"
 
 #include "configd.h"
 
@@ -478,6 +488,7 @@ typedef struct audit_event_data {
 	char		*ed_prop_value;	/* property value. */
 } audit_event_data_t;
 
+#if Have_ADT
 /*
  * Pointer to function to do special processing to get audit event ID.
  * Audit event IDs are defined in /usr/include/bsm/adt_event.h.  Function
@@ -487,6 +498,7 @@ typedef int (*spc_getid_fn_t)(tx_commit_data_t *, size_t, const char *,
     au_event_t *);
 static int general_enable_id(tx_commit_data_t *, size_t, const char *,
     au_event_t *);
+#endif
 
 static uu_list_pool_t *rc_children_pool;
 static uu_list_pool_t *rc_pg_notify_pool;
@@ -499,6 +511,7 @@ static pthread_mutex_t	rc_pg_notify_lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t	rc_pg_notify_cv = PTHREAD_COND_INITIALIZER;
 static uint_t		rc_notify_in_use;	/* blocks removals */
 
+#if Have_ADT
 /*
  * Some combinations of property group/property name require a special
  * audit event to be generated when there is a change.
@@ -511,7 +524,9 @@ typedef struct audit_special_prop_item {
 	au_event_t	api_event_id;	/* event id or 0. */
 	spc_getid_fn_t	api_event_func; /* function to get event id. */
 } audit_special_prop_item_t;
+#endif
 
+#if Have_ADT
 /*
  * Native builds are done using the build machine's standard include
  * files.  These files may not yet have the definitions for the ADT_smf_*
@@ -553,6 +568,7 @@ static audit_special_prop_item_t special_props_list[] = {
 #define	SPECIAL_PROP_COUNT	(sizeof (special_props_list) /\
 	sizeof (audit_special_prop_item_t))
 #endif	/* NATIVE_BUILD */
+#endif
 
 /*
  * We support an arbitrary number of clients interested in events for certain
@@ -1281,7 +1297,6 @@ rc_notify_remove_locked(rc_notify_t *np)
 		assert(0);	/* CAN'T HAPPEN */
 	}
 }
-
 /*
  * Permission checking functions.  See comment atop this file.
  */
@@ -1526,6 +1541,7 @@ perm_granted(permcheck_t *pcp)
 	perm_status_t ret = PERM_DENIED;
 	uid_t uid;
 	struct passwd pw;
+	struct passwd *pwr;
 	char pwbuf[1024];	/* XXX should be NSS_BUFLEN_PASSWD */
 
 	/* Get the uid */
@@ -1552,7 +1568,7 @@ perm_granted(permcheck_t *pcp)
 	uid = ucred_geteuid(uc);
 	assert(uid != (uid_t)-1);
 
-	if (getpwuid_r(uid, &pw, pwbuf, sizeof (pwbuf)) == NULL) {
+	if (getpwuid_r(uid, &pw, pwbuf, sizeof (pwbuf), &pwr) == NULL) {
 		return (PERM_FAIL);
 	}
 
@@ -2262,6 +2278,7 @@ rc_node_create_property(rc_node_t *pp, rc_node_lookup_t *nip,
 	return (REP_PROTOCOL_SUCCESS);
 }
 
+#if 0
 /*
  * This function implements a decision table to determine the event ID for
  * changes to the enabled (SCF_PROPERTY_ENABLED) property.  The event ID is
@@ -2348,6 +2365,8 @@ special_prop_compare(const void *item1, const void *item2)
 	return (r);
 }
 
+#endif
+
 int
 rc_node_init(void)
 {
@@ -2385,6 +2404,7 @@ rc_node_init(void)
 	if (rc_notify_list == NULL || rc_notify_info_list == NULL)
 		uu_die("out of memory");
 
+#if 0
 	/*
 	 * Sort the special_props_list array so that it can be searched
 	 * with bsearch(3C).
@@ -2397,6 +2417,7 @@ rc_node_init(void)
 	qsort(special_props_list, SPECIAL_PROP_COUNT,
 	    sizeof (special_props_list[0]), special_prop_compare);
 #endif	/* NATIVE_BUILD */
+#endif
 
 	if ((np = rc_node_alloc()) == NULL)
 		uu_die("out of memory");
@@ -2738,7 +2759,7 @@ perm_add_inst_action_auth(permcheck_t *pcp, rc_node_t *inst)
 
 	return (r == REP_PROTOCOL_FAIL_NOT_FOUND ? REP_PROTOCOL_SUCCESS : r);
 }
-#endif /* NATIVE_BUILD */
+#endif /* NATIVE_BUILD | !Have_ADT */
 
 void
 rc_node_ptr_init(rc_node_ptr_t *out)
@@ -3338,7 +3359,7 @@ rc_node_modify_permission_check(char **match_auth)
 	int rc;
 
 	*match_auth = NULL;
-#ifdef NATIVE_BUILD
+#if defined(NATIVE_BUILD) || !(Have_ADT)
 	if (!client_is_privileged()) {
 		granted = PERM_DENIED;
 	}
@@ -3377,6 +3398,8 @@ rc_node_modify_permission_check(char **match_auth)
 #endif /* NATIVE_BUILD */
 }
 
+
+#if Have_ADT
 /*
  * Native builds are done to create svc.configd-native.  This program runs
  * only on the Solaris build machines to create the seed repository, and it
@@ -3433,7 +3456,7 @@ smf_annotation_event(int status, int return_val)
 	}
 	adt_free_event(event);
 }
-#endif
+#endif /* NATIVE_BUILD */
 
 /*
  * smf_audit_event interacts with the security auditing system to generate
@@ -3662,6 +3685,10 @@ special_property_event(audit_event_data_t *evdp, const char *prop_name,
 }
 #endif	/* NATIVE_BUILD */
 
+#else
+	#define smf_audit_event(event_id, status, return_val, data)
+#endif /* Have_ADT */
+
 /*
  * Return a pointer to a string containing all the values of the command
  * specified by cmd_no with each value enclosed in quotes.  It is up to the
@@ -3748,7 +3775,7 @@ generate_property_events(
 	int auth_status,
 	int auth_ret_value)
 {
-#ifndef	NATIVE_BUILD
+#if !defined(NATIVE_BUILD) && Have_ADT
 	enum rep_protocol_transaction_action action;
 	audit_event_data_t audit_data;
 	size_t count;

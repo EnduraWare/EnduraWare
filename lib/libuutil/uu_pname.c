@@ -35,8 +35,10 @@
 #include <errno.h>
 #include <wchar.h>
 #include <unistd.h>
-#include <sys/sysctl.h>
 
+#if 0
+#include <sys/sysctl.h>
+#endif
 
 static const char PNAME_FMT[] = "%s: ";
 static const char ERRNO_FMT[] = ": %s\n";

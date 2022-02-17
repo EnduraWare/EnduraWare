@@ -253,6 +253,7 @@ ucred_is_privileged(ucred_t *uc)
 	return (0);
 }
 
+#if Have_ADT
 /*
  * The purpose of this function is to get the audit session data for use in
  * generating SMF audit events.  We use a single audit session per client.
@@ -267,6 +268,7 @@ get_audit_session(void)
 
 	return (ti->ti_active_client->rc_adt_session);
 }
+#endif
 
 static void *
 thread_start(void *arg)

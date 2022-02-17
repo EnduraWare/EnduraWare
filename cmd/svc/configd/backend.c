@@ -50,8 +50,8 @@
 #include <unistd.h>
 #include <libscf_priv.h>
 
+#include "atomic.h"
 #if 0
-#include <atomic.h>
 #include <door.h>
 #include <zone.h>
 #endif
@@ -577,11 +577,14 @@ backend_panic(const char *format, ...)
 	for (i = 0; i < BACKEND_TYPE_TOTAL; i++) {
 		struct timespec rel;
 
-		rel.tv_sec = 0;
-		rel.tv_nsec = BACKEND_PANIC_TIMEOUT;
+		if (clock_gettime (CLOCK_REALTIME, &rel) < 0)
+			configd_critical("clock_gettime failed");
+
+		// FIXME do a proper add
+		rel.tv_nsec += BACKEND_PANIC_TIMEOUT;
 
 		if (bes[i] != NULL && bes[i]->be_thread != pthread_self()) {
-			if (pthread_mutex_reltimedlock_np(&bes[i]->be_lock,
+			if (pthread_mutex_timedlock(&bes[i]->be_lock,
 			    &rel) != 0)
 				failed++;
 		}

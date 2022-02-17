@@ -36,8 +36,7 @@
 
 #include <alloca.h>
 #include <assert.h>
-#include <bsm/adt_event.h>
-#include <door.h>
+
 #include <errno.h>
 #include <libintl.h>
 #include <limits.h>
@@ -46,8 +45,13 @@
 #include <stdlib.h>
 #include <string.h>
 #include <syslog.h>
-#include <ucred.h>
 #include <unistd.h>
+
+#if 0
+#include <bsm/adt_event.h>
+#include <door.h>
+#include <ucred.h>
+#endif
 
 #include <libuutil.h>
 
@@ -55,7 +59,11 @@
 #include "repcache_protocol.h"
 
 #define	INVALID_CHANGEID	(0)
+#if 0
 #define	INVALID_DOORID		((door_id_t)-1)
+#else
+#define INVALID_DOORID -1
+#endif
 #define	INVALID_RESULT		((rep_protocol_responseid_t)INT_MIN)
 
 /*
@@ -280,7 +288,9 @@ client_alloc(void)
 	uu_list_node_init(cp, &cp->rc_link, client_pool);
 
 	cp->rc_doorfd = -1;
+#if 0
 	cp->rc_doorid = INVALID_DOORID;
+#endif
 
 	(void) pthread_mutex_init(&cp->rc_lock, NULL);
 	(void) pthread_mutex_init(&cp->rc_annotate_lock, NULL);
@@ -304,7 +314,9 @@ client_free(repcache_client_t *cp)
 	assert(cp->rc_insert_thr == 0);
 	assert(cp->rc_refcnt == 0);
 	assert(cp->rc_doorfd == -1);
+#if 0
 	assert(cp->rc_doorid == INVALID_DOORID);
+#endif
 	assert(uu_avl_first(cp->rc_entities) == NULL);
 	assert(uu_avl_first(cp->rc_iters) == NULL);
 	uu_avl_destroy(cp->rc_entities);
@@ -703,10 +715,12 @@ client_destroy(uint32_t id)
 	cp->rc_flags |= RC_CLIENT_DEAD;
 
 	if (cp->rc_doorfd != -1) {
+#if 0 /* PORTME: close door */
 		if (door_revoke(cp->rc_doorfd) < 0)
 			perror("door_revoke");
 		cp->rc_doorfd = -1;
 		cp->rc_doorid = INVALID_DOORID;
+#endif
 	}
 
 	while (cp->rc_refcnt > 0)
@@ -734,11 +748,13 @@ client_destroy(uint32_t id)
 	if (cp->rc_file != NULL)
 		free((void *)cp->rc_file);
 
+#if Use_ADT
 	/*
 	 * End audit session.
 	 */
 #ifndef	NATIVE_BUILD
 	(void) adt_end_session(cp->rc_adt_session);
+#endif
 #endif
 
 	client_free(cp);
@@ -1810,12 +1826,14 @@ backup_repository(repcache_client_t *cp,
 static rep_protocol_responseid_t
 set_annotation(repcache_client_t *cp, struct rep_protocol_annotation *rpr)
 {
-	au_id_t audit_uid;
 	const char *file = NULL;
 	const char *old_ptrs[2];
 	const char *operation = NULL;
 	rep_protocol_responseid_t rc = REP_PROTOCOL_FAIL_NO_RESOURCES;
+#if Have_ADT
+	au_id_t audit_uid;
 	au_asid_t sessionid;
+#endif
 
 	(void) memset((void *)old_ptrs, 0, sizeof (old_ptrs));
 
@@ -1869,6 +1887,7 @@ set_annotation(repcache_client_t *cp, struct rep_protocol_annotation *rpr)
 	 * following code is not a global function in libbsm.  Hence the
 	 * following conditional compilation.
 	 */
+#if Use_ADT
 #ifndef	NATIVE_BUILD
 	/*
 	 * Set the appropriate audit session id.
@@ -1889,6 +1908,7 @@ set_annotation(repcache_client_t *cp, struct rep_protocol_annotation *rpr)
 	}
 	adt_set_asid(cp->rc_adt_session, sessionid);
 #endif	/* NATIVE_BUILD */
+#endif
 
 out:
 	if (operation != NULL)
@@ -1956,6 +1976,7 @@ client_annotation_finished()
 	(void) pthread_mutex_unlock(&cp->rc_annotate_lock);
 }
 
+#if Use_ADT
 #ifndef	NATIVE_BUILD
 static void
 start_audit_session(repcache_client_t *cp)
@@ -2012,6 +2033,7 @@ start_audit_session(repcache_client_t *cp)
 
 	ucred_free(cred);
 }
+#endif
 #endif
 
 /*
@@ -2463,8 +2485,10 @@ create_client(pid_t pid, uint32_t debugflags, int privileged, int *out_fd)
 	cp->rc_pid = pid;
 	cp->rc_debug = debugflags;
 
+#if 0
 #ifndef	NATIVE_BUILD
 	start_audit_session(cp);
+#endif
 #endif
 
 	cp->rc_doorfd = door_create(client_switcher, (void *)cp->rc_id,

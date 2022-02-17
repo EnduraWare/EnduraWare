@@ -31,7 +31,7 @@ add_library(nw-sqlite src/attach.c src/auth.c src/btree.c src/btree_rb.c
     src/hash.c src/insert.c src/main.c src/os.c src/pager.c src/pragma.c
     src/printf.c src/random.c src/select.c src/table.c src/tokenize.c
     src/trigger.c src/update.c src/util.c src/vacuum.c src/vdbe.c src/vdbeaux.c
-    src/where.c src/tclsqlite.c
+    src/where.c
     ${File_sqlite_h}
     ${File_parse_h}
     ${File_parse_c}
