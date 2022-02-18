@@ -42,6 +42,8 @@
  * instead of the default versions based on libc's stdio.
  */
 #define YY_NO_INPUT
+#define YY_INPUT(buf,result,max_size) result = svc_input(buf, max_size)
+
 #ifdef input
 #undef input
 #endif
@@ -54,7 +56,7 @@
 #undef output
 #endif
 
-static int input(void);
+static int svc_input(char *buf, size_t max_size);
 static void unput(int);
 static void output(int);
 
@@ -205,11 +207,11 @@ yyerror(const char *s)
 }
 
 static int
-input(void)
+svc_input(char *buf, size_t max_size)
 {
 	static int saw_eof = 0;
 
-	int c = engine_cmd_getc(est);
+	int c = buf[0] = engine_cmd_getc(est);
 
 	/*
 	 * To ensure input is terminated, slip in a newline on EOF.
@@ -219,14 +221,15 @@ input(void)
 			return (0);
 
 		saw_eof = 1;
-		return ('\n');
+		buf[0] = '\n';
+		return (1);
 	} else
 		saw_eof = 0;
 
 	if (c == '\n')
 		yylineno++;
 
-	return (c);
+	return (1);
 }
 
 static void
